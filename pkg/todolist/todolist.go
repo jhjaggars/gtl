@@ -83,7 +83,7 @@ func (todolist *TodoList) getNextIndex() (string, error) {
 	}
 
 	for _, value := range options {
-		if bytes.IndexByte(used, value) != -1 {
+		if bytes.IndexByte(used, value) == -1 {
 			return string(value), nil
 		}
 	}
