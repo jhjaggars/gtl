@@ -14,9 +14,9 @@ var addCmd = &cobra.Command{
 	Short: "add an item to the list",
 	Run: func(cmd *cobra.Command, args []string) {
 		tl := todolist.Read(Filename)
+		defer tl.Save(Filename)
 		for _, desc := range args {
 			tl.Add(desc)
 		}
-		tl.Save(Filename)
 	},
 }
