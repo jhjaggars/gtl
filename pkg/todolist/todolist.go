@@ -14,6 +14,8 @@ import (
 
 const checkmark string = "\u2713"
 const circle string = "\u25cf"
+const week = 7 * 24 * time.Hour
+const month = 30 * 24 * time.Hour
 
 type TodoItem struct {
 	Index       string
@@ -24,10 +26,19 @@ type TodoItem struct {
 }
 
 func (item *TodoItem) getDone() string {
+
 	if item.Done {
 		return chalk.Green.Color(checkmark)
 	} else {
-		return circle
+		elapsed := time.Since(item.Updated)
+		switch {
+		case elapsed > month:
+			return chalk.Red.Color(circle)
+		case elapsed > week:
+			return chalk.Yellow.Color(circle)
+		default:
+			return circle
+		}
 	}
 }
 
@@ -118,6 +129,7 @@ func (todolist *TodoList) ToggleDone(index string) error {
 		return errors.New("Index did not exist.")
 	}
 	item.Toggle()
+	item.Updated = time.Now()
 	todolist.Items[index] = item
 	return nil
 }
