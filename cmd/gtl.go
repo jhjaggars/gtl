@@ -18,10 +18,11 @@ var rootCmd = &cobra.Command{
 }
 
 var Filename string
+var SortBy string
 
 func main() {
 	tl := todolist.Read(Filename)
-	tl.Show()
+	tl.Show(SortBy)
 }
 
 func Execute() {
@@ -31,6 +32,13 @@ func Execute() {
 		"f",
 		"./todo.json",
 		"file containing todo list")
+	rootCmd.PersistentFlags().StringVarP(
+		&SortBy,
+		"sortby",
+		"s",
+		"description",
+		"field to sort by",
+	)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

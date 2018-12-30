@@ -22,7 +22,7 @@ var doneCmd = &cobra.Command{
 				fmt.Println(err)
 			}
 		}
-		tl.Show()
+		tl.Show(SortBy)
 		tl.Save(Filename)
 	},
 }

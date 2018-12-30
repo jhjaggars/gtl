@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -29,16 +30,15 @@ func (item *TodoItem) getDone() string {
 
 	if item.Done {
 		return chalk.Green.Color(checkmark)
-	} else {
-		elapsed := time.Since(item.Updated)
-		switch {
-		case elapsed > month:
-			return chalk.Red.Color(circle)
-		case elapsed > week:
-			return chalk.Yellow.Color(circle)
-		default:
-			return circle
-		}
+	}
+	elapsed := time.Since(item.Updated)
+	switch {
+	case elapsed > month:
+		return chalk.Red.Color(circle)
+	case elapsed > week:
+		return chalk.Yellow.Color(circle)
+	default:
+		return circle
 	}
 }
 
@@ -47,14 +47,68 @@ func (item *TodoItem) Show() {
 		item.Index,
 		item.getDone(),
 		item.Description,
-		chalk.Black.NewStyle().
-			WithTextStyle(chalk.Bold).
+		chalk.White.NewStyle().
+			WithBackground(chalk.Black).
+			WithTextStyle(chalk.Dim).
 			Style(humanize.Time(item.Updated)),
 	)
 }
 
 func (item *TodoItem) Toggle() {
 	item.Done = !item.Done
+}
+
+type By func(item1, item2 *TodoItem) bool
+
+type itemSorter struct {
+	items []TodoItem
+	by    func(item1, item2 *TodoItem) bool
+}
+
+func (s *itemSorter) Len() int {
+	return len(s.items)
+}
+
+func (s *itemSorter) Swap(i, j int) {
+	s.items[i], s.items[j] = s.items[j], s.items[i]
+}
+
+func (s *itemSorter) Less(i, j int) bool {
+	return s.by(&s.items[i], &s.items[j])
+}
+
+func (by By) Sort(items []TodoItem) {
+	is := &itemSorter{
+		items: items,
+		by:    by,
+	}
+	sort.Sort(is)
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+var SortMappings = map[string]By{
+	"index": func(item1, item2 *TodoItem) bool {
+		return item1.Index < item2.Index
+	},
+	"description": func(item1, item2 *TodoItem) bool {
+		return item1.Description < item2.Description
+	},
+	"done": func(item1, item2 *TodoItem) bool {
+
+		return boolToInt(item1.Done) < boolToInt(item2.Done)
+	},
+	"created": func(item1, item2 *TodoItem) bool {
+		return item1.Created.Unix() < item2.Created.Unix()
+	},
+	"updated": func(item1, item2 *TodoItem) bool {
+		return item1.Updated.Unix() < item2.Updated.Unix()
+	},
 }
 
 func getbytes(filename string) []byte {
@@ -99,7 +153,7 @@ func (todolist *TodoList) getNextIndex() (string, error) {
 		}
 	}
 
-	return "", errors.New("No more available indices.")
+	return "", errors.New("no more available indices")
 }
 
 func (todolist *TodoList) Add(description string) error {
@@ -117,8 +171,17 @@ func (todolist *TodoList) Add(description string) error {
 	return nil
 }
 
-func (todolist *TodoList) Show() {
-	for _, v := range todolist.Items {
+func (todolist *TodoList) Show(sortcolumn string) {
+	by, ok := SortMappings[sortcolumn]
+	if !ok {
+		by = SortMappings["updated"]
+	}
+	var items []TodoItem
+	for k := range todolist.Items {
+		items = append(items, todolist.Items[k])
+	}
+	By(by).Sort(items)
+	for _, v := range items {
 		v.Show()
 	}
 }
@@ -126,7 +189,7 @@ func (todolist *TodoList) Show() {
 func (todolist *TodoList) ToggleDone(index string) error {
 	item, prs := todolist.Items[index]
 	if !prs {
-		return errors.New("Index did not exist.")
+		return errors.New("index did not exist")
 	}
 	item.Toggle()
 	item.Updated = time.Now()
